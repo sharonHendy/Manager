@@ -1,4 +1,5 @@
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.*;
 
@@ -94,5 +95,14 @@ public class Sqs {
         }catch (SqsException e){
 
         }
+    }
+
+    public void deleteQueue(String queueName){
+        GetQueueUrlRequest getQueueRequest = GetQueueUrlRequest.builder()
+                .queueName(queueName)
+                .build();
+        String queueUrl = sqs.getQueueUrl(getQueueRequest).queueUrl();
+        DeleteQueueRequest deleteReq = DeleteQueueRequest.builder().queueUrl(queueUrl).build();
+        DeleteQueueResponse deleteRes = sqs.deleteQueue(deleteReq);
     }
 }

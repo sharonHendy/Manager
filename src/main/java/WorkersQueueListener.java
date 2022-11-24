@@ -29,7 +29,7 @@ public class WorkersQueueListener implements Runnable {
                 manager.decreaseTaskCountOfApp(appName);
                 if(manager.getNumOfTasksPerApp(appName) == 0) {
                     manager.sendFinishMessageToApp(appName);
-                    manager.removeAppFromManager(appName);
+//                    manager.removeAppFromManager(appName);
                     System.out.println("manager sent finish msg to app:" + appName);
                 }
                 manager.deleteMsgFromQueue(WORKERS_TO_MANAGER_QUEUE, message);

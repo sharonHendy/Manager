@@ -98,13 +98,19 @@ public class EC2 {
 
     public String createWorkerInstance(String name, String amiId, int n) {
 
-        String userData = "#!/bin/bash -x\n" +
-                "set -e -x\n" +
-//                "sudo yum update -y\n" +
-//                "sudo yum install maven -y\n" +
-//                "sudo yum install java-1.8.0-openjdk -y\n" +
-                "aws s3api get-object --bucket bucket-ttest --key worker.zip /tmp/worker.zip\n" +
-                "unzip -P yairpass /tmp/worker.zip\njava -jar /tmp/worker.jar" + n + "\n";
+//        String userData = "#!/bin/bash -x\n" +
+//                "set -e -x\n" +
+////                "sudo yum update -y\n" +
+////                "sudo yum install maven -y\n" +
+////                "sudo yum install java-1.8.0-openjdk -y\n" +
+//                "aws s3api get-object --bucket bucket-ttest --key worker.zip /tmp/worker.zip\n" +
+//                "unzip -P yairpass /tmp/worker.zip\njava -jar /tmp/worker.jar" + n + "\n";
+
+        String userData = "#!/bin/bash -x\n"+ "sudo yum check-update -y\n"+
+                "aws s3api get-object --bucket bucket-programs --key worker.zip /tmp/worker.zip\n"+
+                "cd /tmp\n"+
+                "unzip -P yairpass worker.zip\n"+
+                "java -jar worker.jar "+n+"\n";
 
         RunInstancesRequest runRequest = RunInstancesRequest.builder()
                 .instanceType(InstanceType.T2_MICRO)
