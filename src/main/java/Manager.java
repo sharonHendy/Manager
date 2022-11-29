@@ -7,10 +7,7 @@ import software.amazon.awssdk.services.sqs.model.Message;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -51,22 +48,31 @@ public class Manager {
     Map<String, String> managerToAppsQueues = new ConcurrentHashMap<>();//todo only workerListener uses
 
 
+
     ExecutorService  executorService; //threads
 
 
     public Manager(int n){
-        this.sqsClient = SqsClient.builder().region(Region.US_EAST_1)
-                .credentialsProvider(ProfileCredentialsProvider.create())
-                .build();
-        this.sqs = new Sqs(sqsClient);
-        this.ec2Client = Ec2Client.builder().region(Region.US_EAST_1)
-                .credentialsProvider(ProfileCredentialsProvider.create())
-                .build();
+//        this.sqsClient = SqsClient.builder().region(Region.US_EAST_1)
+//                .credentialsProvider(ProfileCredentialsProvider.create())
+//                .build();
+//
+//        this.ec2Client = Ec2Client.builder().region(Region.US_EAST_1)
+//                .credentialsProvider(ProfileCredentialsProvider.create())
+//                .build();
+//
+//        this.s3Client = S3Client.builder().region(Region.US_EAST_1)
+//                .credentialsProvider(ProfileCredentialsProvider.create())
+//                .build();
+
+        this.sqsClient = SqsClient.builder().region(Region.US_EAST_1).build();
+        this.ec2Client = Ec2Client.builder().region(Region.US_EAST_1).build();
+        this.s3Client = S3Client.builder().region(Region.US_EAST_1).build();
         this.ec2 = new EC2(ec2Client);
-        this.s3Client = S3Client.builder().region(Region.US_EAST_1)
-                .credentialsProvider(ProfileCredentialsProvider.create())
-                .build();
+        this.sqs = new Sqs(sqsClient);
         this.s3 = new S3(s3Client);
+
+
         this.n = n;
     }
 
@@ -95,6 +101,12 @@ public class Manager {
     public void terminate(){
         System.out.println("manager start termination process");
         executorService.shutdown();
+
+        for(String workerId: workersIds){
+            ec2.terminateEC2(workerId);
+        }
+        System.out.println("manager terminated workers");
+
         for(String bucket: outputBucketsPerApp.values()){
             s3.deleteObjectsInBucket(bucket);
             s3.deleteBucket(bucket);
@@ -105,12 +117,17 @@ public class Manager {
         }
         System.out.println("manager deleted buckets");
 
-        for(String workerId: workersIds){
-            ec2.terminateEC2(workerId);
+        sqs.deleteQueue(MANAGER_TO_WORKERS_QUEUE);
+        sqs.deleteQueue(WORKERS_TO_MANAGER_QUEUE);
+        sqs.deleteQueue(APPS_TO_MANAGER_QUEUE);
+        for(String q: managerToAppsQueues.values()){
+            sqs.deleteQueue(q);
         }
-        System.out.println("manager terminated workers");
+        System.out.println("manager deleted queues");
+
+
         try {
-            Runtime.getRuntime().exec("shutdown -s -t 3"); //shutdown after 5 seconds
+            Runtime.getRuntime().exec("sudo shutdown -h now"); //shutdown after 5 seconds
         } catch (IOException e) {
             System.out.println("error - manager could not terminate");
         }
@@ -148,7 +165,7 @@ public class Manager {
         String bucket = outputBucketsPerApp.get(appName);
         if(bucket == null){
             bucket = "output-bucket-"+appName;
-            s3.createBucket(bucket, Region.US_WEST_2);
+            s3.createBucket(bucket, Region.US_EAST_1);
             outputBucketsPerApp.put(appName, bucket);
         }
 
@@ -156,7 +173,9 @@ public class Manager {
 //        List<ByteBuffer> lst = new ArrayList<>();
 //        lst.add(ByteBuffer.wrap(text.getBytes()));
 
-        s3.uploadStrToS3(bucket, imgURL, ByteBuffer.wrap(text.getBytes()));
+        String key = "" +new Date().getTime();
+        String val = "url:" + imgURL+"\t" + text;
+        s3.uploadStrToS3(bucket, key, ByteBuffer.wrap(val.getBytes()));
 //        try {
 //            s3.multipartUpload(bucket, imgURL, lst);
 //        } catch (IOException e) {
@@ -181,10 +200,10 @@ public class Manager {
 
     public void removeAppFromManager(String appName){
         taskNumPerApp.remove(appName);
-        managerToAppsQueues.remove(appName);
+//        managerToAppsQueues.remove(appName);
         if(taskNumPerApp.isEmpty()){
             completedAllTasks = true;
-            completedAllTasks.notifyAll();
+//            completedAllTasks.notifyAll();
         }
 
     }
@@ -229,7 +248,7 @@ public class Manager {
         synchronized (numOfMessagesLock){
             synchronized (numOfWorkersLock){
                 while(numOfWorkers < (int) Math.ceil((double) numOfMessages / n) && numOfWorkers < INSTANCE_NUM_THRESHOLD){
-                    String workerId = ec2.createWorkerInstance("worker-" + numOfWorkers, "ami-0ff8a91507f77f867", n);
+                    String workerId = ec2.createWorkerInstance("worker-" + numOfWorkers, "ami-0e82ae023db057ca1", n);
                     workersIds.add(workerId);
                     numOfWorkers++;
                     System.out.println("manager - added worker, num of workers" + numOfWorkers);
