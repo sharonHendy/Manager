@@ -148,7 +148,7 @@ public class Manager {
         String bucket = outputBucketsPerApp.get(appName);
         if(bucket == null){
             bucket = "output-bucket-"+appName;
-            s3.createBucket(bucket, Region.US_WEST_2);
+            s3.createBucket(bucket, Region.US_EAST_1);
             outputBucketsPerApp.put(appName, bucket);
         }
 
