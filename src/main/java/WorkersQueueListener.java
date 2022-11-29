@@ -21,12 +21,19 @@ public class WorkersQueueListener implements Runnable {
                 String[] dividedMessage = message.body().split("\n");
                 String appName = dividedMessage[0].substring(5);
                 String imageUrl = dividedMessage[1].substring(9);
-                String text = dividedMessage[2].substring(5);
+                String text = dividedMessage[2];
+//                if(dividedMessage[2].startsWith("error")){
+//                    text = dividedMessage[2].substring(6);
+//                }else{
+//                    text = dividedMessage[2].substring(5);
+//                }
+
 
                 System.out.println("manager received msg from worker");
                 manager.uploadResultToS3(appName, imageUrl, text);
                 System.out.println("manager uploaded result to s3, num of tasks for app left:" + manager.getNumOfTasksPerApp(appName));
                 manager.decreaseTaskCountOfApp(appName);
+                manager.updateNumOdMessages(-1);
                 if(manager.getNumOfTasksPerApp(appName) == 0) {
                     manager.sendFinishMessageToApp(appName);
 //                    manager.removeAppFromManager(appName);

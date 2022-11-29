@@ -174,7 +174,7 @@ public class Manager {
 //        lst.add(ByteBuffer.wrap(text.getBytes()));
 
         String key = "" +new Date().getTime();
-        String val = "url:" + imgURL+"\t" + "text:" + text;
+        String val = "url:" + imgURL+"\t" + text;
         s3.uploadStrToS3(bucket, key, ByteBuffer.wrap(val.getBytes()));
 //        try {
 //            s3.multipartUpload(bucket, imgURL, lst);
