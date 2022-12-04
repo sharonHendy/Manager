@@ -19,6 +19,8 @@ public class TasksDistributer implements Runnable {
         System.out.println("manager downloaded input file for app:" + appName);
         manager.insertNumOfTasksPerApp(appName, urlsArray.length);
         manager.addWorkersIfNeeded();
+        manager.openResultUploaderForApp(appName);
+
         for(String url: urlsArray){
             String taskText ="app:"+appName+"\n"+"url:"+url;
             manager.sendTaskToWorkersQueue(taskText);

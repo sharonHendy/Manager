@@ -1,4 +1,3 @@
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -9,7 +8,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Manager {
 
@@ -46,6 +44,8 @@ public class Manager {
     Map<String, String> outputBucketsPerApp = new ConcurrentHashMap<>(); //results buckets for each app //todo only workerListener uses
     Map<String, String> inputBucketsPerApp = new ConcurrentHashMap<>();
     Map<String, String> managerToAppsQueues = new ConcurrentHashMap<>();//todo only workerListener uses
+
+    Map<String, BlockingDeque<String[]>> resultMsgsPerApp = new ConcurrentHashMap<>();
 
 
 
@@ -133,11 +133,25 @@ public class Manager {
         }
     }
 
+    public String[] getResultForApp(String appName) throws InterruptedException {
+        return resultMsgsPerApp.get(appName).take();
+    }
+
+    public void putResultForApp(String appName, String[] result){
+        resultMsgsPerApp.get(appName).add(result);
+
+    }
 
     public void openThreadForApp(String appName, String bucket, String key){
         //opens an instance of TaskDistributer
         executorService.execute(new TasksDistributer(this, appName, bucket, key));
+    }
 
+    public void openResultUploaderForApp(String appName){
+        executorService.execute(new ResultsUploaderPerApp(this, appName));
+    }
+    public void addResultsQueueForApp(String appName){
+        resultMsgsPerApp.put(appName, new LinkedBlockingDeque<>());
     }
 
     public void decreaseTaskCountOfApp(String nameOfApp){
@@ -234,11 +248,11 @@ public class Manager {
 
     public void insertNumOfTasksPerApp(String appName, int numOfTasks){
         taskNumPerApp.put(appName, numOfTasks);
-        updateNumOdMessages(numOfTasks);
+        updateNumOfMessages(numOfTasks);
 
     }
 
-    public void updateNumOdMessages(int toAdd){
+    public void updateNumOfMessages(int toAdd){
         synchronized (numOfMessagesLock){
             numOfMessages += toAdd;
         }

@@ -42,6 +42,8 @@ public class AppsQueueListener implements Runnable{
                     manager.addInputBucketForApp(appName, bucketName);
                     manager.createQueue(appName, queueName);
                     System.out.println("manager - created queue fpr app:" + appName);
+
+                    manager.addResultsQueueForApp(appName);
                     manager.openThreadForApp(appName, bucketName, bucketKey);
                 }
                 manager.deleteMsgFromQueue(APPS_TO_MANAGER_QUEUE, message);
